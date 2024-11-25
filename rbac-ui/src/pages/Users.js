@@ -1,181 +1,182 @@
-import React, { useState } from "react";
-
-
-const generateId = () => {
-  return Math.random().toString(36).substr(2, 9); 
-};
+import React, { useState, useEffect } from "react";
+import { fetchUsers, addUser, updateUser, deleteUser } from "../apiService";
 
 const Users = () => {
-  const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState("");
-  const [confirmationMessage, setConfirmationMessage] = useState("");
-  const [users, setUsers] = useState([
-    { id: generateId(), name: "John Doe", email: "johndoe@example.com", role: "Admin" },
-    { id: generateId(), name: "Jane Smith", email: "janesmith@example.com", role: "User" },
-    { id: generateId(), name: "Alice Johnson", email: "alicej@example.com", role: "Admin" },
-    { id: generateId(), name: "Bob Brown", email: "bobb@example.com", role: "User" },
-  ]);
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "User" });
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(""); 
+  const [users, setUsers] = useState([]);
+  const [newUser, setNewUser] = useState({ name: "", email: "", role: "" });
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("success"); // success or error
+  const [editingUser, setEditingUser] = useState(null);
+  const [updatedUser, setUpdatedUser] = useState({ name: "", email: "", role: "" });
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Email validation regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const data = await fetchUsers();
+        console.log("Fetched users:", data); // Check the API response here
+        setUsers(data); 
+      } catch (error) {
+        setMessage("Error fetching users: Invalid response format");
+        setMessageType("error");
+      }
+    };
+  }, []);
 
-  const handleEmailChange = (e) => {
-    const emailInput = e.target.value;
-    setEmail(emailInput);
-
-    // Email validation
-    if (!emailRegex.test(emailInput)) {
-      setEmailError("Please enter a valid email address");
-    } else {
-      setEmailError("");
-    }
-  };
-
-  const handleDelete = (userId) => {
-    setUsers(users.filter((user) => user.id !== userId));
-    setConfirmationMessage("User deleted successfully!");
-    setTimeout(() => setConfirmationMessage(""), 3000); 
-  };
-
-  const handleAddUser = () => {
-    if (!newUser.name || !newUser.email || !emailRegex.test(newUser.email)) {
-      setEmailError("Please enter a valid name and email.");
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.role) {
+      setMessage("All fields are required to add a new user.");
+      setMessageType("error");
       return;
     }
-
-    setUsers([...users, { ...newUser, id: generateId() }]);
-    setNewUser({ name: "", email: "", role: "User" });
-    setEmailError("");
-    setIsModalOpen(false); 
+    setIsLoading(true);
+    try {
+      const { message } = await addUser(newUser);
+      setMessage(message);
+      setMessageType("success");
+      const { data } = await fetchUsers(); // Refresh the user list
+      setUsers(data);
+      setNewUser({ name: "", email: "", role: "" }); // Reset form
+    } catch (error) {
+      setMessage(`Error adding user: ${error.message || "Invalid response format"}`);
+      setMessageType("error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setNewUser({ ...newUser, [name]: value });
+  const handleUpdateUser = async () => {
+    if (!updatedUser.name || !updatedUser.email || !updatedUser.role) {
+      setMessage("All fields are required to update the user.");
+      setMessageType("error");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { message } = await updateUser(editingUser.id, updatedUser);
+      setMessage(message);
+      setMessageType("success");
+      const { data } = await fetchUsers(); // Refresh the user list
+      setUsers(data);
+      setEditingUser(null); // Reset editing state
+      setUpdatedUser({ name: "", email: "", role: "" }); // Reset form
+    } catch (error) {
+      setMessage(`Error updating user: ${error.message || "Invalid response format"}`);
+      setMessageType("error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+  const handleDeleteUser = async (userId) => {
+    setIsLoading(true);
+    try {
+      const { message } = await deleteUser(userId);
+      setMessage(message);
+      setMessageType("success");
+      const { data } = await fetchUsers(); // Refresh the user list
+      setUsers(data);
+    } catch (error) {
+      setMessage(`Error deleting user: ${error.message || "Invalid response format"}`);
+      setMessageType("error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleEditUser = (user) => {
+    setEditingUser(user);
+    setUpdatedUser({ name: user.name, email: user.email, role: user.role });
+  };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Users List</h1>
+    <div style={{ padding: "1rem" }}>
+      <h2>Users</h2>
 
-      {/* Search Box */}
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search users by name"
-          value={searchTerm}
-          onChange={handleSearchChange}
-          className="p-2 border border-gray-300 rounded-none w-full"
-        />
-      </div>
-
-      {/* Add User Button */}
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="mb-4 p-2 bg-blue-500 text-white rounded-none hover:bg-blue-600"
-      >
-        Add User
-      </button>
-
-      {/* Modal for Adding User */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-1/3 shadow-lg">
-            <h2 className="text-xl font-semibold mb-4">Add New User</h2>
-            <input
-              type="text"
-              name="name"
-              value={newUser.name}
-              onChange={handleChange}
-              className="mb-2 p-2 border border-gray-300 rounded-none w-full"
-              placeholder="Enter name"
-            />
-            <input
-              type="text"
-              name="email"
-              value={newUser.email}
-              onChange={handleChange}
-              className="mb-2 p-2 border border-gray-300 rounded-none w-full"
-              placeholder="Enter email"
-            />
-            {emailError && <p className="text-red-500">{emailError}</p>}
-            <select
-              name="role"
-              value={newUser.role}
-              onChange={handleChange}
-              className="mb-2 p-2 border border-gray-300 rounded-none w-full"
-            >
-              <option value="User">User</option>
-              <option value="Admin">Admin</option>
-            </select>
-            <div className="flex justify-between">
-              <button
-                onClick={handleAddUser}
-                className="p-2 bg-blue-500 text-white rounded-none hover:bg-blue-600"
-              >
-                Add
-              </button>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 bg-red-500 text-white rounded-none hover:bg-red-600"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      {message && (
+        <div
+          style={{
+            marginBottom: "1rem",
+            color: messageType === "success" ? "green" : "red",
+            fontWeight: "bold",
+          }}
+        >
+          {message}
         </div>
       )}
 
-      {/* Display success confirmation */}
-      {confirmationMessage && (
-        <div className="mb-4 text-green-500">{confirmationMessage}</div>
+      <div style={{ marginBottom: "1.5rem" }}>
+        <h3>Add New User</h3>
+        <input
+          type="text"
+          placeholder="Name"
+          value={newUser.name}
+          required
+          onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={newUser.email}
+          required
+          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+        />
+        <input
+          type="text"
+          placeholder="Role"
+          value={newUser.role}
+          required
+          onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+        />
+        <button onClick={handleAddUser} disabled={isLoading}>
+          {isLoading ? "Adding..." : "Add User"}
+        </button>
+      </div>
+
+      {editingUser && (
+        <div style={{ marginBottom: "1.5rem" }}>
+          <h3>Edit User</h3>
+          <input
+            type="text"
+            placeholder="Name"
+            value={updatedUser.name}
+            required
+            onChange={(e) => setUpdatedUser({ ...updatedUser, name: e.target.value })}
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={updatedUser.email}
+            required
+            onChange={(e) => setUpdatedUser({ ...updatedUser, email: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="Role"
+            value={updatedUser.role}
+            required
+            onChange={(e) => setUpdatedUser({ ...updatedUser, role: e.target.value })}
+          />
+          <button onClick={handleUpdateUser} disabled={isLoading}>
+            {isLoading ? "Updating..." : "Update User"}
+          </button>
+          <button onClick={() => setEditingUser(null)}>Cancel</button>
+        </div>
       )}
 
-      {/* Users Table */}
-      <table className="table-auto w-full border-collapse border border-gray-200">
-        <thead>
-          <tr>
-            <th className="px-4 py-2 border">Name</th>
-            <th className="px-4 py-2 border">Email</th>
-            <th className="px-4 py-2 border">Role</th>
-            <th className="px-4 py-2 border">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredUsers.map((user) => (
-            <tr key={user.id}>
-              <td className="px-4 py-2 border">{user.name}</td>
-              <td className="px-4 py-2 border">{user.email}</td>
-              <td className="px-4 py-2 border">{user.role}</td>
-              <td className="px-4 py-2 border">
-                <button
-                  className="text-blue-500 hover:underline"
-                  onClick={() => alert(`Edit user: ${user.name}`)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="text-red-500 hover:underline ml-4"
-                  onClick={() => handleDelete(user.id)}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ul style={{ listStyleType: "none", padding: 0 }}>
+        {users.map((user) => (
+          <li key={user.id} style={{ marginBottom: "0.5rem" }}>
+            <span>
+              {user.name} - {user.role}
+            </span>
+            <button onClick={() => handleEditUser(user)}>Edit</button>
+            <button onClick={() => handleDeleteUser(user.id)} disabled={isLoading}>
+              {isLoading ? "Deleting..." : "Delete"}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
