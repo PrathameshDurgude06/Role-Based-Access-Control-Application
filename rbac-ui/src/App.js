@@ -1,11 +1,29 @@
-import './App.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from './ThemeContext';
+import Sidebar from "./components/Sidebar";
+import Users from "./pages/Users";
+import Roles from "./pages/Roles";
+import Permissions from "./pages/Permissions";
 
 function App() {
   return (
-    <div className="bg-blue-500 text-white p-6 text-center">
-      <h1 className="text-3xl font-bold">Hello, Tailwind!</h1>
-      <p className="mt-2">Tailwind CSS is now working!</p>
-    </div>
+    <ThemeProvider>
+    <Router>
+      <div className="flex">
+        {/* Sidebar */}
+        <Sidebar />
+
+        {/* Main Content */}
+        <div className="flex-1 p-4">
+          <Routes>
+            <Route path="/users" element={<Users />} />
+            <Route path="/roles" element={<Roles />} />
+            <Route path="/permissions" element={<Permissions />} />
+          </Routes>
+        </div>
+      </div>
+    </Router>
+  </ThemeProvider>
   );
 }
 
