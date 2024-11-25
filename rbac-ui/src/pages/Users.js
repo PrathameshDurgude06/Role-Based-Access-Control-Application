@@ -14,13 +14,13 @@ const Users = () => {
     const loadUsers = async () => {
       try {
         const data = await fetchUsers();
-        console.log("Fetched users:", data); // Check the API response here
-        setUsers(data); 
+        setUsers(data);
       } catch (error) {
-        setMessage("Error fetching users: Invalid response format");
+        setMessage("Error fetching users.");
         setMessageType("error");
       }
     };
+    loadUsers();
   }, []);
 
   const handleAddUser = async () => {
@@ -34,7 +34,7 @@ const Users = () => {
       const { message } = await addUser(newUser);
       setMessage(message);
       setMessageType("success");
-      const { data } = await fetchUsers(); // Refresh the user list
+      const data = await fetchUsers(); // Refresh the user list
       setUsers(data);
       setNewUser({ name: "", email: "", role: "" }); // Reset form
     } catch (error) {
@@ -56,7 +56,7 @@ const Users = () => {
       const { message } = await updateUser(editingUser.id, updatedUser);
       setMessage(message);
       setMessageType("success");
-      const { data } = await fetchUsers(); // Refresh the user list
+      const data = await fetchUsers(); // Refresh the user list
       setUsers(data);
       setEditingUser(null); // Reset editing state
       setUpdatedUser({ name: "", email: "", role: "" }); // Reset form
@@ -74,7 +74,7 @@ const Users = () => {
       const { message } = await deleteUser(userId);
       setMessage(message);
       setMessageType("success");
-      const { data } = await fetchUsers(); // Refresh the user list
+      const data = await fetchUsers(); // Refresh the user list
       setUsers(data);
     } catch (error) {
       setMessage(`Error deleting user: ${error.message || "Invalid response format"}`);
@@ -164,19 +164,55 @@ const Users = () => {
         </div>
       )}
 
-      <ul style={{ listStyleType: "none", padding: 0 }}>
-        {users.map((user) => (
-          <li key={user.id} style={{ marginBottom: "0.5rem" }}>
-            <span>
-              {user.name} - {user.role}
-            </span>
-            <button onClick={() => handleEditUser(user)}>Edit</button>
-            <button onClick={() => handleDeleteUser(user.id)} disabled={isLoading}>
-              {isLoading ? "Deleting..." : "Delete"}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "2rem" }}>
+        <thead>
+          <tr style={{ backgroundColor: "#f4f4f4", textAlign: "left" }}>
+            <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>Name</th>
+            <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>Email</th>
+            <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>Role</th>
+            <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((user) => (
+            <tr key={user.id}>
+              <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>{user.name}</td>
+              <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>{user.email}</td>
+              <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>{user.role}</td>
+              <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                <button
+                  onClick={() => handleEditUser(user)}
+                  style={{
+                    marginRight: "8px",
+                    backgroundColor: "#007bff",
+                    color: "white",
+                    border: "none",
+                    padding: "5px 10px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteUser(user.id)}
+                  style={{
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    border: "none",
+                    padding: "5px 10px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                  disabled={isLoading}
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
