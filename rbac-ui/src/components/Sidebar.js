@@ -5,7 +5,7 @@ import { useTheme } from '../ThemeContext';
 
 const Sidebar = () => {
   const { isDarkMode, toggleTheme } = useTheme();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);  // Sidebar visibility state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
 
   useEffect(() => {
     localStorage.setItem("sidebarOpen", isSidebarOpen);
@@ -23,16 +23,15 @@ const Sidebar = () => {
 
       {/* Sidebar */}
       <nav className={`bg-${isDarkMode ? 'gray-800' : 'white'} h-full text-${isDarkMode ? 'white' : 'black'} p-4`}>
-        
-        {/* Change Mode button inside Sidebar */}
-        <button 
+        {/* Sidebar content */}
+        <ul className={`space-y-4 transition-all duration-300 ease-in-out ${isSidebarOpen ? "transform-none" : "transform -translate-x-full"} md:block`}>
+          <li>
+          <button 
           onClick={toggleTheme} 
           className="w-full text-left p-2 bg-gray-500 rounded mb-4">
           Change Mode
         </button>
-
-        {/* Sidebar content */}
-        <ul className={`space-y-4 transition-all duration-300 ease-in-out ${isSidebarOpen ? "transform-none" : "transform -translate-x-full"} md:block`}>
+          </li>
           <li>
             <NavLink
               to="/users"
