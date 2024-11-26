@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { fetchUsers, addUser, updateUser, deleteUser } from "../apiService";
+import "./Users.css";
 
 const Users = () => {
   const [users, setUsers] = useState([]);
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "" });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const [formMode, setFormMode] = useState("add"); // "add" or "edit"
+  const [currentUser, setCurrentUser] = useState({
+    name: "",
+    email: "",
+    role: "",
+    status: "Active",
+  });
+  const [editingUserId, setEditingUserId] = useState(null);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("success"); // success or error
-  const [editingUser, setEditingUser] = useState(null);
-  const [updatedUser, setUpdatedUser] = useState({ name: "", email: "", role: "" });
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -15,6 +24,7 @@ const Users = () => {
       try {
         const data = await fetchUsers();
         setUsers(data);
+        setFilteredUsers(data);
       } catch (error) {
         setMessage("Error fetching users.");
         setMessageType("error");
@@ -23,45 +33,63 @@ const Users = () => {
     loadUsers();
   }, []);
 
-  const handleAddUser = async () => {
-    if (!newUser.name || !newUser.email || !newUser.role) {
-      setMessage("All fields are required to add a new user.");
-      setMessageType("error");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const { message } = await addUser(newUser);
-      setMessage(message);
-      setMessageType("success");
-      const data = await fetchUsers(); // Refresh the user list
-      setUsers(data);
-      setNewUser({ name: "", email: "", role: "" }); // Reset form
-    } catch (error) {
-      setMessage(`Error adding user: ${error.message || "Invalid response format"}`);
-      setMessageType("error");
-    } finally {
-      setIsLoading(false);
+  const handleSearch = (e) => {
+    const term = e.target.value.toLowerCase();
+    setSearchTerm(term);
+    const filtered = users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(term) ||
+        user.email.toLowerCase().includes(term)
+    );
+    setFilteredUsers(filtered);
+  };
+
+  const handleFormToggle = (mode = "add", user = null) => {
+    setIsFormVisible(true);
+    setFormMode(mode);
+    if (mode === "edit" && user) {
+      setCurrentUser({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+      });
+      setEditingUserId(user.id);
+    } else {
+      setCurrentUser({ name: "", email: "", role: "", status: "Active" });
     }
   };
 
-  const handleUpdateUser = async () => {
-    if (!updatedUser.name || !updatedUser.email || !updatedUser.role) {
-      setMessage("All fields are required to update the user.");
+  const handleFormClose = () => {
+    setIsFormVisible(false);
+    setCurrentUser({ name: "", email: "", role: "", status: "Active" });
+  };
+
+  const handleFormSubmit = async () => {
+    const { name, email, role, status } = currentUser;
+    if (!name || !email || !role || !status) {
+      setMessage("All fields are required.");
       setMessageType("error");
       return;
     }
+
     setIsLoading(true);
     try {
-      const { message } = await updateUser(editingUser.id, updatedUser);
-      setMessage(message);
-      setMessageType("success");
-      const data = await fetchUsers(); // Refresh the user list
+      if (formMode === "add") {
+        const { message } = await addUser(currentUser);
+        setMessage(message);
+        setMessageType("success");
+      } else if (formMode === "edit") {
+        const { message } = await updateUser(editingUserId, currentUser);
+        setMessage(message);
+        setMessageType("success");
+      }
+      const data = await fetchUsers();
       setUsers(data);
-      setEditingUser(null); // Reset editing state
-      setUpdatedUser({ name: "", email: "", role: "" }); // Reset form
+      setFilteredUsers(data);
+      handleFormClose();
     } catch (error) {
-      setMessage(`Error updating user: ${error.message || "Invalid response format"}`);
+      setMessage("Error submitting form.");
       setMessageType("error");
     } finally {
       setIsLoading(false);
@@ -74,137 +102,63 @@ const Users = () => {
       const { message } = await deleteUser(userId);
       setMessage(message);
       setMessageType("success");
-      const data = await fetchUsers(); // Refresh the user list
+      const data = await fetchUsers();
       setUsers(data);
+      setFilteredUsers(data);
     } catch (error) {
-      setMessage(`Error deleting user: ${error.message || "Invalid response format"}`);
+      setMessage("Error deleting user.");
       setMessageType("error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleEditUser = (user) => {
-    setEditingUser(user);
-    setUpdatedUser({ name: user.name, email: user.email, role: user.role });
-  };
-
   return (
-    <div style={{ padding: "1rem" }}>
-      <h2>Users</h2>
+    <div className="users-container">
+      <h2>User Management</h2>
 
-      {message && (
-        <div
-          style={{
-            marginBottom: "1rem",
-            color: messageType === "success" ? "green" : "red",
-            fontWeight: "bold",
-          }}
-        >
-          {message}
-        </div>
-      )}
+      {message && <div className={`message ${messageType}`}>{message}</div>}
 
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h3>Add New User</h3>
+      <div className="search-add-bar">
         <input
           type="text"
-          placeholder="Name"
-          value={newUser.name}
-          required
-          onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+          placeholder="Search by name or email"
+          value={searchTerm}
+          onChange={handleSearch}
+          className="search-input"
         />
-        <input
-          type="email"
-          placeholder="Email"
-          value={newUser.email}
-          required
-          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="Role"
-          value={newUser.role}
-          required
-          onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-        />
-        <button onClick={handleAddUser} disabled={isLoading}>
-          {isLoading ? "Adding..." : "Add User"}
+        <button onClick={() => handleFormToggle("add")} className="add-button">
+          Add User
         </button>
       </div>
 
-      {editingUser && (
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h3>Edit User</h3>
-          <input
-            type="text"
-            placeholder="Name"
-            value={updatedUser.name}
-            required
-            onChange={(e) => setUpdatedUser({ ...updatedUser, name: e.target.value })}
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={updatedUser.email}
-            required
-            onChange={(e) => setUpdatedUser({ ...updatedUser, email: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="Role"
-            value={updatedUser.role}
-            required
-            onChange={(e) => setUpdatedUser({ ...updatedUser, role: e.target.value })}
-          />
-          <button onClick={handleUpdateUser} disabled={isLoading}>
-            {isLoading ? "Updating..." : "Update User"}
-          </button>
-          <button onClick={() => setEditingUser(null)}>Cancel</button>
-        </div>
-      )}
-
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "2rem" }}>
+      <table className="user-table">
         <thead>
-          <tr style={{ backgroundColor: "#f4f4f4", textAlign: "left" }}>
-            <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>Name</th>
-            <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>Email</th>
-            <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>Role</th>
-            <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>Actions</th>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
+          {filteredUsers.map((user) => (
             <tr key={user.id}>
-              <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>{user.name}</td>
-              <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>{user.email}</td>
-              <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>{user.role}</td>
-              <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+              <td>{user.name}</td>
+              <td>{user.email}</td>
+              <td>{user.role}</td>
+              <td>{user.status}</td>  {/* Make sure the status is displayed here */}
+              <td className="actions-column">
                 <button
-                  onClick={() => handleEditUser(user)}
-                  style={{
-                    marginRight: "8px",
-                    backgroundColor: "#007bff",
-                    color: "white",
-                    border: "none",
-                    padding: "5px 10px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
+                  onClick={() => handleFormToggle("edit", user)}
+                  className="edit-button"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDeleteUser(user.id)}
-                  style={{
-                    backgroundColor: "#dc3545",
-                    color: "white",
-                    border: "none",
-                    padding: "5px 10px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
-                  disabled={isLoading}
+                  className="delete-button"
                 >
                   Delete
                 </button>
@@ -213,6 +167,60 @@ const Users = () => {
           ))}
         </tbody>
       </table>
+
+      {isFormVisible && (
+        <div className="user-form">
+          <h3>{formMode === "add" ? "Add User" : "Edit User"}</h3>
+          <input
+            type="text"
+            placeholder="Name"
+            value={currentUser.name}
+            onChange={(e) =>
+              setCurrentUser({ ...currentUser, name: e.target.value })
+            }
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={currentUser.email}
+            onChange={(e) =>
+              setCurrentUser({ ...currentUser, email: e.target.value })
+            }
+          />
+          <select
+            value={currentUser.role}
+            onChange={(e) =>
+              setCurrentUser({ ...currentUser, role: e.target.value })
+            }
+          >
+            <option value="" disabled>
+              Select Role
+            </option>
+            <option value="Admin">Admin</option>
+            <option value="User">User</option>
+          </select>
+          <select
+            value={currentUser.status}
+            onChange={(e) =>
+              setCurrentUser({ ...currentUser, status: e.target.value })
+            }
+          >
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+
+          <button
+            onClick={handleFormSubmit}
+            disabled={isLoading}
+            className="submit-button"
+          >
+            {isLoading ? "Submitting..." : "Submit"}
+          </button>
+          <button onClick={handleFormClose} className="cancel-button">
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 };

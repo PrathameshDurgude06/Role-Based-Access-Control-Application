@@ -1,34 +1,68 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 const Roles = () => {
-  const [roles, setRoles] = useState([
-    { id: 1, name: "Admin", permissions: ["Read", "Write", "Delete"] },
-    { id: 2, name: "User", permissions: ["Read"] },
-    { id: 3, name: "Manager", permissions: ["Read", "Write"] }
-  ]);
-
+  const [roles, setRoles] = useState([]);
+  const [permissions, setPermissions] = useState([]);
   const [newRole, setNewRole] = useState({ name: "", permissions: [] });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editRole, setEditRole] = useState(null);
 
-  const handleAddRole = () => {
-    if (!newRole.name) return;
+  // Fetch roles and permissions when the component mounts
+  useEffect(() => {
+    axios.get("http://localhost:8080/roles") // Adjust the URL as per your backend API
+      .then(response => {
+        setRoles(response.data);
+      })
+      .catch(error => {
+        console.error("Error fetching roles:", error);
+      });
 
-    setRoles([...roles, { ...newRole, id: roles.length + 1 }]);
-    setNewRole({ name: "", permissions: [] });
-    setIsModalOpen(false);
+    axios.get("http://localhost:8080/api/permissions") // Adjust the URL as per your backend API
+      .then(response => {
+        setPermissions(response.data); // Assuming the backend returns a list of permissions
+      })
+      .catch(error => {
+        console.error("Error fetching permissions:", error);
+      });
+  }, []);
+
+  const handleAddRole = () => {
+    if (!newRole.name || newRole.permissions.length === 0) return;
+
+    axios.post("http://localhost:8080/api/roles", newRole) // Adjust the URL as per your backend API
+      .then(response => {
+        setRoles([...roles, response.data]);
+        setNewRole({ name: "", permissions: [] });
+        setIsModalOpen(false);
+      })
+      .catch(error => {
+        console.error("Error adding role:", error);
+      });
   };
 
   const handleEditRole = () => {
-    setRoles(roles.map(role =>
-      role.id === editRole.id ? editRole : role
-    ));
-    setIsEditModalOpen(false);
+    if (!editRole.name || editRole.permissions.length === 0) return;
+
+    axios.put(`http://localhost:8080/api/roles/${editRole.id}`, editRole) // Adjust the URL as per your backend API
+      .then(response => {
+        setRoles(roles.map(role => role.id === editRole.id ? response.data : role));
+        setIsEditModalOpen(false);
+      })
+      .catch(error => {
+        console.error("Error editing role:", error);
+      });
   };
 
   const handleDeleteRole = (roleId) => {
-    setRoles(roles.filter(role => role.id !== roleId));
+    axios.delete(`http://localhost:8080/api/roles/${roleId}`) // Adjust the URL as per your backend API
+      .then(() => {
+        setRoles(roles.filter(role => role.id !== roleId));
+      })
+      .catch(error => {
+        console.error("Error deleting role:", error);
+      });
   };
 
   const handleTogglePermission = (permission) => {
@@ -71,7 +105,7 @@ const Roles = () => {
             <div>
               <label className="block mb-2">Permissions</label>
               <div className="flex flex-col space-y-2">
-                {["Read", "Write", "Delete"].map((permission) => (
+                {permissions.map((permission) => (
                   <label key={permission} className="flex items-center">
                     <input
                       type="checkbox"
@@ -121,7 +155,7 @@ const Roles = () => {
             <div>
               <label className="block mb-2">Permissions</label>
               <div className="flex flex-col space-y-2">
-                {["Read", "Write", "Delete"].map((permission) => (
+                {permissions.map((permission) => (
                   <label key={permission} className="flex items-center">
                     <input
                       type="checkbox"
