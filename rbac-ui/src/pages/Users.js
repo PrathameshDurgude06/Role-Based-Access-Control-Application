@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchUsers, addUser, updateUser, deleteUser } from "../apiService";
+import { fetchUsers, addUser, updateUser, deleteUser } from "../services/userService";
 import "./Users.css";
 
 const Users = () => {
@@ -148,7 +148,7 @@ const Users = () => {
               <td>{user.name}</td>
               <td>{user.email}</td>
               <td>{user.role}</td>
-              <td>{user.status}</td>  {/* Make sure the status is displayed here */}
+              <td>{user.status}</td>
               <td className="actions-column">
                 <button
                   onClick={() => handleFormToggle("edit", user)}
@@ -198,6 +198,7 @@ const Users = () => {
             </option>
             <option value="Admin">Admin</option>
             <option value="User">User</option>
+            <option value="Manager">Manager</option>
           </select>
           <select
             value={currentUser.status}
@@ -208,17 +209,18 @@ const Users = () => {
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
-
-          <button
-            onClick={handleFormSubmit}
-            disabled={isLoading}
-            className="submit-button"
-          >
-            {isLoading ? "Submitting..." : "Submit"}
-          </button>
-          <button onClick={handleFormClose} className="cancel-button">
-            Cancel
-          </button>
+          <div className="form-actions">
+            <button
+              onClick={handleFormSubmit}
+              disabled={isLoading}
+              className="submit-button"
+            >
+              {isLoading ? "Submitting..." : "Submit"}
+            </button>
+            <button onClick={handleFormClose} className="cancel-button">
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

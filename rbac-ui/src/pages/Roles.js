@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import roleService from "../services/roleService";
 
 const Roles = () => {
   const [roles, setRoles] = useState([]);
@@ -9,73 +9,68 @@ const Roles = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editRole, setEditRole] = useState(null);
 
-  // Fetch roles and permissions when the component mounts
   useEffect(() => {
-    axios.get("http://localhost:8080/roles") // Adjust the URL as per your backend API
-      .then(response => {
-        setRoles(response.data);
-      })
-      .catch(error => {
-        console.error("Error fetching roles:", error);
-      });
-
-    axios.get("http://localhost:8080/api/permissions") // Adjust the URL as per your backend API
-      .then(response => {
-        setPermissions(response.data); // Assuming the backend returns a list of permissions
-      })
-      .catch(error => {
-        console.error("Error fetching permissions:", error);
-      });
+    const fetchData = async () => {
+      try {
+        const [rolesData, permissionsData] = await Promise.all([
+          roleService.getAllRoles(),
+          roleService.getAllPermissions(),
+        ]);
+        setRoles(rolesData);
+        setPermissions(permissionsData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+    fetchData();
   }, []);
 
-  const handleAddRole = () => {
+  const handleAddRole = async () => {
     if (!newRole.name || newRole.permissions.length === 0) return;
 
-    axios.post("http://localhost:8080/api/roles", newRole) // Adjust the URL as per your backend API
-      .then(response => {
-        setRoles([...roles, response.data]);
-        setNewRole({ name: "", permissions: [] });
-        setIsModalOpen(false);
-      })
-      .catch(error => {
-        console.error("Error adding role:", error);
-      });
+    try {
+      const addedRole = await roleService.addRole(newRole);
+      setRoles([...roles, addedRole]);
+      setNewRole({ name: "", permissions: [] });
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error adding role:", error);
+    }
   };
 
-  const handleEditRole = () => {
+  const handleEditRole = async () => {
     if (!editRole.name || editRole.permissions.length === 0) return;
 
-    axios.put(`http://localhost:8080/api/roles/${editRole.id}`, editRole) // Adjust the URL as per your backend API
-      .then(response => {
-        setRoles(roles.map(role => role.id === editRole.id ? response.data : role));
-        setIsEditModalOpen(false);
-      })
-      .catch(error => {
-        console.error("Error editing role:", error);
-      });
-  };
-
-  const handleDeleteRole = (roleId) => {
-    axios.delete(`http://localhost:8080/api/roles/${roleId}`) // Adjust the URL as per your backend API
-      .then(() => {
-        setRoles(roles.filter(role => role.id !== roleId));
-      })
-      .catch(error => {
-        console.error("Error deleting role:", error);
-      });
-  };
-
-  const handleTogglePermission = (permission) => {
-    if (editRole.permissions.includes(permission)) {
-      setEditRole({
+    try {
+      const updatedRole = await roleService.editRole(editRole.id, {
         ...editRole,
-        permissions: editRole.permissions.filter(p => p !== permission)
+        permissions: editRole.permissions || [], // Ensure permissions is not null
       });
+      setRoles(roles.map((role) => (role.id === editRole.id ? updatedRole : role)));
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error("Error editing role:", error);
+    }
+  };
+
+  const handleDeleteRole = async (roleId) => {
+    try {
+      await roleService.deleteRole(roleId);
+      setRoles(roles.filter((role) => role.id !== roleId));
+    } catch (error) {
+      console.error("Error deleting role:", error);
+    }
+  };
+
+  const handleTogglePermission = (permission, role) => {
+    const updatePermissions = role.permissions.includes(permission)
+      ? role.permissions.filter((p) => p !== permission)
+      : [...role.permissions, permission];
+
+    if (role === editRole) {
+      setEditRole({ ...editRole, permissions: updatePermissions });
     } else {
-      setEditRole({
-        ...editRole,
-        permissions: [...editRole.permissions, permission]
-      });
+      setNewRole({ ...newRole, permissions: updatePermissions });
     }
   };
 
@@ -84,7 +79,7 @@ const Roles = () => {
       <h1 className="text-2xl font-semibold mb-4">Roles List</h1>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="mb-4 p-2 bg-blue-500 text-white rounded-none hover:bg-blue-600"
+        className="mb-4 p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
       >
         Add Role
       </button>
@@ -96,46 +91,30 @@ const Roles = () => {
             <h2 className="text-xl font-semibold mb-4">Add New Role</h2>
             <input
               type="text"
-              name="roleName"
               value={newRole.name}
               onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
-              className="mb-2 p-2 border border-gray-300 rounded-none w-full"
+              className="mb-2 p-2 border border-gray-300 rounded w-full"
               placeholder="Role Name"
             />
             <div>
               <label className="block mb-2">Permissions</label>
-              <div className="flex flex-col space-y-2">
-                {permissions.map((permission) => (
-                  <label key={permission} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={newRole.permissions.includes(permission)}
-                      onChange={() => setNewRole({
-                        ...newRole,
-                        permissions: newRole.permissions.includes(permission)
-                          ? newRole.permissions.filter(p => p !== permission)
-                          : [...newRole.permissions, permission]
-                      })}
-                    />
-                    <span className="ml-2">{permission}</span>
-                  </label>
-                ))}
-              </div>
+              {permissions.map((permission) => (
+                <label key={permission} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={newRole.permissions.includes(permission)}
+                    onChange={() => handleTogglePermission(permission, newRole)}
+                  />
+                  <span className="ml-2">{permission}</span>
+                </label>
+              ))}
             </div>
-            <div className="flex justify-between">
-              <button
-                onClick={handleAddRole}
-                className="p-2 bg-blue-500 text-white rounded-none hover:bg-blue-600"
-              >
-                Add Role
-              </button>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 bg-red-500 text-white rounded-none hover:bg-red-600"
-              >
-                Cancel
-              </button>
-            </div>
+            <button onClick={handleAddRole} className="p-2 bg-blue-500 text-white mt-4">
+              Add Role
+            </button>
+            <button onClick={() => setIsModalOpen(false)} className="p-2 bg-red-500 text-white mt-4">
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -149,65 +128,60 @@ const Roles = () => {
               type="text"
               value={editRole.name}
               onChange={(e) => setEditRole({ ...editRole, name: e.target.value })}
-              className="mb-2 p-2 border border-gray-300 rounded-none w-full"
+              className="mb-2 p-2 border border-gray-300 rounded w-full"
               placeholder="Role Name"
             />
             <div>
               <label className="block mb-2">Permissions</label>
-              <div className="flex flex-col space-y-2">
-                {permissions.map((permission) => (
-                  <label key={permission} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={editRole.permissions.includes(permission)}
-                      onChange={() => handleTogglePermission(permission)}
-                    />
-                    <span className="ml-2">{permission}</span>
-                  </label>
-                ))}
-              </div>
+              {permissions.map((permission) => (
+                <label key={permission} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={editRole.permissions?.includes(permission)}
+                    onChange={() => handleTogglePermission(permission, editRole)}
+                  />
+                  <span className="ml-2">{permission}</span>
+                </label>
+              ))}
             </div>
-            <div className="flex justify-between">
-              <button
-                onClick={handleEditRole}
-                className="p-2 bg-blue-500 text-white rounded-none hover:bg-blue-600"
-              >
-                Save Changes
-              </button>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="p-2 bg-red-500 text-white rounded-none hover:bg-red-600"
-              >
-                Cancel
-              </button>
-            </div>
+            <button onClick={handleEditRole} className="p-2 bg-blue-500 text-white mt-4">
+              Save Changes
+            </button>
+            <button onClick={() => setIsEditModalOpen(false)} className="p-2 bg-red-500 text-white mt-4">
+              Cancel
+            </button>
           </div>
         </div>
       )}
 
-      <table className="min-w-full bg-white">
+      <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="px-4 py-2 border">Role Name</th>
-            <th className="px-4 py-2 border">Permissions</th>
-            <th className="px-4 py-2 border">Actions</th>
+            <th className="py-2 px-4 border-b">Role Name</th>
+            <th className="py-2 px-4 border-b">Permissions</th>
+            <th className="py-2 px-4 border-b">Actions</th>
           </tr>
         </thead>
         <tbody>
           {roles.map((role) => (
             <tr key={role.id}>
-              <td className="px-4 py-2 border">{role.name}</td>
-              <td className="px-4 py-2 border">{role.permissions.join(", ")}</td>
-              <td className="px-4 py-2 border">
+              <td className="py-2 px-4 border-b">{role.name}</td>
+              <td className="py-2 px-4 border-b">
+                {(role.permissions || []).join(", ")}
+              </td>
+              <td className="py-2 px-4 border-b">
                 <button
-                  className="text-blue-500 hover:underline"
-                  onClick={() => { setEditRole(role); setIsEditModalOpen(true); }}
+                  onClick={() => {
+                    setEditRole(role);
+                    setIsEditModalOpen(true);
+                  }}
+                  className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                 >
                   Edit
                 </button>
                 <button
-                  className="text-red-500 hover:underline ml-4"
                   onClick={() => handleDeleteRole(role.id)}
+                  className="p-2 bg-red-500 text-white rounded hover:bg-red-600 ml-2"
                 >
                   Delete
                 </button>
