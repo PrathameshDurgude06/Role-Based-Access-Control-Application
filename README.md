@@ -73,22 +73,20 @@ The UI adapts to various screen sizes, ensuring seamless interaction on both des
 ## **How to Use the Application**
 
 1. Clone the Repository:
-```bash
 git clone <repository-url>
 
 2. Install Dependencies:
 Navigate to the project folder and run:
 
-bash
 Copy code
 npm install
 
 3. Start the Application:
 To run the application locally, use the following command:
 
-bash
 Copy code
 npm start
+
 4. Access the Admin Dashboard:
 Open your browser and navigate to http://localhost:3000/. You will be presented with a user management dashboard where you can add, edit, delete, and manage users and their roles. Use the search bar to find users by name or email and filter by role or status.
 
@@ -96,22 +94,25 @@ Key Components
 User List Table:
 Displays a list of users with options to edit, delete, and view their roles and status.
 Includes search functionality to find users by name or email.
+
 User Form:
 A form used for adding and editing users, including fields for name, email, role, and status.
 Validates input to ensure all required fields are filled.
+
 Role and Permissions Management:
 Admins can assign roles to users and define permissions associated with each role.
 Permissions can be customized to allow actions such as read, write, and delete.
 Features to Be Added (Optional Enhancements)
+
 Role-Based Authentication:
 Implement authentication based on user roles for more secure access to certain parts of the application.
+
 Sorting and Pagination:
 Add sorting functionality for user lists by name, email, or role.
 Implement pagination for better user management in large datasets.
+
 Backend Integration (Optional):
 Integrate with a backend to persist user and role data, using RESTful APIs for user and role CRUD operations.
-Evaluation Criteria
-Creativity and Design Quality: The design follows modern UI principles and provides an intuitive, user-friendly experience. Creative solutions to handling user roles and permissions have been implemented.
 
 Responsiveness: The application is fully responsive and works well across different screen sizes.
 
@@ -123,10 +124,6 @@ Technical Skill: The code is clean, modular, and adheres to best practices in Re
 
 Security Practices: Basic security measures, such as input validation and error handling, have been applied to prevent common issues like XSS or invalid data submission.
 
-Documentation: The README file provides clear instructions for setup and usage, with a detailed overview of the project's structure and features.
-
 Conclusion
 This project demonstrates a comprehensive approach to implementing a Role-Based Access Control (RBAC) system using React.js. It allows admins to manage users, assign roles, and define permissions while ensuring security and ease of use. The UI is responsive, functional, and provides a smooth experience for administrators managing their user base and access control settings.
 
-markdown
-Copy code
